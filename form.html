@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title></title>
+    <script src="js/validiq.js"></script>
+    <script>
+        function test() {
+            var emailField = document.getElementById("email");
+        }
+    </script>
+</head>
+<body>
+    <input id="email" type="text" data-validator="blank(val) || email(val)" value="test@email.ru">
+    <button type="button" onclick="test()">Test</button>
+</body>
+</html>
