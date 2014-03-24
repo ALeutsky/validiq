@@ -3,15 +3,16 @@
 <head>
     <meta charset="utf-8">
     <title></title>
-    <script src="js/validiq.js"></script>
+    <script src="validiq.js"></script>
     <script>
         function test() {
             var emailField = document.getElementById("email");
+            console.log(validiQ(emailField.getAttribute("data-validator"))(emailField.value));
         }
     </script>
 </head>
 <body>
-    <input id="email" type="text" data-validator="blank(val) || email(val)" value="test@email.ru">
+    <input id="email" type="text" data-validator="blank || email" value="test@email.ru">
     <button type="button" onclick="test()">Test</button>
 </body>
 </html>
