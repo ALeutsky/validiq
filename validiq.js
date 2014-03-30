@@ -103,12 +103,13 @@
     }
 
     function vjsCompiler (vjs) {
+        if (vjs == "") {
+            vjs = "true";
+        }
         return new Function("value", "val", "validators", "with (validators) {return " + vjs + "}");
     }
 
     function vqCompiler (vquery) {
-        // TODO: добавить проверку длины
-
         vquery = vquery.replace(/\s+/g, "");
 
         var vjs = "",
