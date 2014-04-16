@@ -1,74 +1,48 @@
-(function () {
-    var validiQ = function (vquery) {
-        var func = vqCompiler(vquery);
+(function (exports) {
+    var validators = {},
+        exValidators = {},
+        globalSettings = {},
 
-        return function (value) {
-            return func(value, value,  validators);
-        };
-    };
+        CACHE = {};
+
 
     var _slice = Array.prototype.slice;
 
-    var validators = {
-        /**
-         * @param val
-         * @return {boolean}
-         */
-        required: function (val) {
-            return val !== false && !!val;
-        },
+    function extend (source) {
+        var i, k, dict;
+        for (i = 1; i < arguments.length; i++) {
+            dict = arguments[i];
 
-        /**
-         * @param val
-         * @return {boolean}
-         */
-        blank: function (val) {
-            return !val;
-        },
+            if (dict && typeof dict == "object") {
+                for (k in dict) {
+                    source[k] = dict[k];
+                }
+            }
 
-        min: function (val, lvl) {
-            return val >= lvl;
-        },
-
-        max: function (val, lvl) {
-            return val <= lvl;
-        },
-
-        minlen: function (val, len) {
-            return val.length >= len;
-        },
-
-        maxlen: function (val, len) {
-            return val.length <= len;
-        },
-
-        /**
-        int: function (val) {
-            return /^(-|)\d+$/.test(val);
-        },
-
-        uint: function (val) {
-            return /^\d+$/.test(val);
-        },
-        */
-
-        number: function (val) {
-            return !isNaN(val * 1);
-        },
-
-        string: function (val) {
-            return typeof val == "string";
-        },
-
-        email: function (val) {
-            // TODO: email validator
-            return /^[a-z0-9-.]+@[a-z0-9-.]+\.[a-z]{2,10}$/i.test(val);
         }
+
+        return source;
+    }
+
+    var validiQ = function (vquery, throwErrors) {
+        var func;
+        if (vquery in CACHE) {
+            func = CACHE[vquery];
+        } else {
+            func = vqCompiler(vquery);
+            CACHE[vquery] = func;
+        }
+
+        var withValidators = throwErrors ? exValidators : validators;
+
+        return function (value) {
+            return func(value, value, withValidators);
+        };
     };
 
 
     /**
-     *
+     * ValidationError
      * @param name
      * @param args
      * @constructor
@@ -86,29 +60,15 @@
     validiQ.ValidationError = ValidationError;
 
 
-    var exValidators = {},
-        name;
-    for (name in validators) {
-        addExValidator(name, validators[name]);
-    }
-
-    function addExValidator (name, func) {
-        exValidators[name] = function () {
-            if (func.apply(this, arguments)) {
-                return true;
-            } else {
-                throw new ValidationError(name, _slice.call(arguments));
-            }
-        }
-    }
-
     function vjsCompiler (vjs) {
+        if (vjs == "") {
+            vjs = "true";
+        }
         return new Function("value", "val", "validators", "with (validators) {return " + vjs + "}");
     }
 
-    function vqCompiler (vquery) {
-        // TODO: добавить проверку длины
 
+    function vqCompiler (vquery) {
         vquery = vquery.replace(/\s+/g, "");
 
         var vjs = "",
@@ -148,12 +108,63 @@
     }
 
 
-    validiQ.is = validators;
+    validiQ.validators = validators;
 
     validiQ.addValidator = function (name, func) {
         validators[name] = func;
-        addExValidator(name, func);
+        exValidators[name] = function () {
+            if (func.apply(this, arguments)) {
+                return true;
+            } else {
+                throw new ValidationError(name, _slice.call(arguments));
+            }
+        }
     }
 
-    window.validiQ = validiQ;
-}) ();
+    validiQ.addValidators = function (dict) {
+        for (var k in dict) {
+            validiQ.addValidator(k, dict[k]);
+        }
+    }
+
+    validiQ.addValidators({
+        required: function (val) {
+            return val !== false && !!val;
+        },
+
+        blank: function (val) {
+            return !val;
+        },
+
+        min: function (val, lvl) {
+            return val >= lvl;
+        },
+
+        max: function (val, lvl) {
+            return val <= lvl;
+        },
+
+        minlen: function (val, len) {
+            return val.length >= len;
+        },
+
+        maxlen: function (val, len) {
+            return val.length <= len;
+        },
+
+        number: function (val) {
+            return !isNaN(val * 1);
+        },
+
+        string: function (val) {
+            return typeof val == "string";
+        },
+
+        email: function (val) {
+            // TODO: email validator
+            return /^[a-z0-9-.]+@[a-z0-9-.]+\.[a-z]{2,10}$/i.test(val);
+        }
+    });
+
+    exports.validiQ = validiQ;
+}) (window);
