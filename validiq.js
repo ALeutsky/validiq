@@ -1,7 +1,15 @@
 (function (exports) {
     var validators = {},
         exValidators = {},
-        globalSettings = {},
+        globalSettings = {
+            throwErrors: false,
+            compiler: "vquery"
+        },
+
+        compilers = {
+            vjs: vjsCompiler,
+            vquery: vqCompiler
+        },
 
         CACHE = {};
 
@@ -24,22 +32,6 @@
         return source;
     }
 
-    var validiQ = function (vquery, throwErrors) {
-        var func;
-        if (vquery in CACHE) {
-            func = CACHE[vquery];
-        } else {
-            func = vqCompiler(vquery);
-            CACHE[vquery] = func;
-        }
-
-        var withValidators = throwErrors ? exValidators : validators;
-
-        return function (value) {
-            return func(value, value, withValidators);
-        };
-    };
-
 
     /**
      * ValidationError
@@ -56,8 +48,6 @@
     ValidationError.prototype.toString = function () {
         return this.name;
     }
-
-    validiQ.ValidationError = ValidationError;
 
 
     function vjsCompiler (vjs) {
@@ -108,9 +98,7 @@
     }
 
 
-    validiQ.validators = validators;
-
-    validiQ.addValidator = function (name, func) {
+    function addValidator (name, func) {
         validators[name] = func;
         exValidators[name] = function () {
             if (func.apply(this, arguments)) {
@@ -121,13 +109,59 @@
         }
     }
 
-    validiQ.addValidators = function (dict) {
+    function addValidators (dict) {
         for (var k in dict) {
-            validiQ.addValidator(k, dict[k]);
+            addValidator(k, dict[k]);
         }
     }
 
-    validiQ.addValidators({
+
+    function newInstance (options) {
+        var compiler,
+            instanceSettings = {};
+
+        var instance = function (vquery, throwErrors) {
+            if (this instanceof instance) {
+                return newInstance(extend({}, instanceSettings, vquery));
+            }
+
+            var func;
+            if (vquery in CACHE) {
+                func = CACHE[vquery];
+            } else {
+                func = compiler(vquery);
+                CACHE[vquery] = func;
+            }
+
+            var withValidators = ((typeof throwErrors === "boolean") ? throwErrors : instanceSettings.throwErrors) ? exValidators : validators;
+
+            return function (value) {
+                return func(value, value, withValidators);
+            };
+        }
+
+        instance.ValidationError = ValidationError;
+        instance.validators = validators;
+        instance.addValidator = addValidator;
+        instance.addValidators = addValidators;
+
+        instance.configure = function (options) {
+            extend(instanceSettings, options);
+
+            if (!(instanceSettings.compiler in compilers)) {
+                instanceSettings.compiler = "vquery";
+            }
+
+            compiler = compilers[instanceSettings.compiler];
+        }
+
+        instance.configure(options);
+
+        return instance;
+    }
+
+
+    addValidators({
         required: function (val) {
             return val !== false && !!val;
         },
@@ -166,5 +200,5 @@
         }
     });
 
-    exports.validiQ = validiQ;
+    exports.validiQ = newInstance(globalSettings);
 }) (window);
